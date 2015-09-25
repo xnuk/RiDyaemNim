@@ -3,3 +3,6 @@ Main
 *.dyn_hi
 *.o
 *.hi
+dist/
+.*
+!/.gitignore
