@@ -47,7 +47,6 @@ parse str nick
         if null body
            then return []
            else newStdGen >>= return . randomR (0, length body - 1) >>= \(x, _) -> stio [body !! x]
-
     | isCmd Emoji.plugin = getParse Emoji.plugin util
     | otherwise = return []
     where cmd = (`BS.isPrefixOf` str) . BS.fromString

@@ -14,9 +14,10 @@ import Data.Maybe (isJust)
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as BS
-import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteString.Lazy as BSLazy
 import qualified Data.ByteString.Lazy.UTF8 as BSLazy
+import qualified Data.Text as T
+import Data.Text.Encoding
 
 import "interpolatedstring-perl6" Text.InterpolatedString.Perl6 (qq, q)
 
@@ -38,7 +39,8 @@ instance Show Prefix where
     show NoPrefix = ""
 
 instance Show Param where
-    show (Param arr text) = BS.toString (BSC.unwords arr) ++ " :" ++ BS.toString text
+    show (Param arr text) = BS.toString (encodeUtf8 . T.unwords . map (decodeUtf8With $ \_ a -> case a of Just _  -> Just '♥'
+                                                                                                          Nothing -> Nothing) $ arr) ++ " :" ++ BS.toString text
 
 instance Show Msg where
     show (Msg prefix cmd param) = show prefix ++ ' ' : BS.toString cmd ++ ' ' : show param
@@ -86,7 +88,8 @@ regexMsg = toRegex [q|^(?::([^\s]+)[ \t]+)?([a-zA-Z]+|\d\d\d)((?:[ \t][^:\s][^\s
 
 findAllMsg :: BS.ByteString -> IO ([Msg], BS.ByteString)
 findAllMsg str = do
-    x <- str =~ regexMsg
+    x <- (encodeUtf8 . decodeUtf8With (\_ a -> case a of Just _  -> Just '♥'
+                                                         Nothing -> Nothing)) str =~ regexMsg
     case x of
       Nothing -> return ([], str)
       Just (_, _, next, [prefix, cmd, middle, text]) -> do
@@ -94,7 +97,8 @@ findAllMsg str = do
           let prefix' = case pref of
                           Nothing -> if' (prefix == BS.empty) NoPrefix (Servername prefix)
                           Just (_, match, _, _) -> Nickname match
-          let prm = BSC.words middle
+          let prm = map encodeUtf8 . T.words . decodeUtf8With (\_ a -> case a of Just _  -> Just '♥'
+                                                                                 Nothing -> Nothing) $ middle
           (arr, chunk) <- findAllMsg next
           return (Msg prefix' cmd (Param prm text) : arr, chunk)
       _ -> undefined
