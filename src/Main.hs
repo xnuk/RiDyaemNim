@@ -39,11 +39,14 @@ instance Show Prefix where
     show NoPrefix = ""
 
 instance Show Param where
-    show (Param arr text) = BS.toString (encodeUtf8 . T.unwords . map (decodeUtf8With $ \_ a -> case a of Just _  -> Just '♥'
-                                                                                                          Nothing -> Nothing) $ arr) ++ " :" ++ BS.toString text
+    show (Param arr text) = BS.toString (encodeUtf8 . T.unwords . map decodeUtf8Chan $ arr) ++ " :" ++ BS.toString text
 
 instance Show Msg where
     show (Msg prefix cmd param) = show prefix ++ ' ' : BS.toString cmd ++ ' ' : show param
+
+decodeUtf8Chan :: BS.ByteString -> T.Text
+decodeUtf8Chan = decodeUtf8With $ \_ a -> case a of Just _  -> Just '♥'
+                                                    Nothing -> Nothing
 
 getCmd :: Msg -> BS.ByteString
 getCmd (Msg _ cmd _) = cmd
@@ -88,8 +91,7 @@ regexMsg = toRegex [q|^(?::([^\s]+)[ \t]+)?([a-zA-Z]+|\d\d\d)((?:[ \t][^:\s][^\s
 
 findAllMsg :: BS.ByteString -> IO ([Msg], BS.ByteString)
 findAllMsg str = do
-    x <- (encodeUtf8 . decodeUtf8With (\_ a -> case a of Just _  -> Just '♥'
-                                                         Nothing -> Nothing)) str =~ regexMsg
+    x <- (encodeUtf8 . decodeUtf8Chan) str =~ regexMsg
     case x of
       Nothing -> return ([], str)
       Just (_, _, next, [prefix, cmd, middle, text]) -> do
@@ -97,8 +99,7 @@ findAllMsg str = do
           let prefix' = case pref of
                           Nothing -> if' (prefix == BS.empty) NoPrefix (Servername prefix)
                           Just (_, match, _, _) -> Nickname match
-          let prm = map encodeUtf8 . T.words . decodeUtf8With (\_ a -> case a of Just _  -> Just '♥'
-                                                                                 Nothing -> Nothing) $ middle
+          let prm = map encodeUtf8 . T.words . decodeUtf8Chan $ middle
           (arr, chunk) <- findAllMsg next
           return (Msg prefix' cmd (Param prm text) : arr, chunk)
       _ -> undefined

@@ -51,8 +51,14 @@ parse (Util { rawBody = str }) =
                       Just (DaumDic { definitions = xs }) -> do
                           ys <- mapM (mth . BSLazy.fromStrict . encodeUtf8) xs
                           let Just ps = sequence . filter isJust $ ys
-                          return . map (BSLazy.append [qq|$bold$str$bold  |] . snd) . filter ((== BSLazy.fromStrict str) . fst) $ ps
+                          print str
+                          if null ps
+                             then return []
+                             else return . (:[]) . (\(a, b) -> BSLazy.append [qq|$bold$a$bold  |] b) $
+                                                if not (any ((== BSLazy.fromStrict str) . fst) ps)
+                                                   then head ps
+                                                   else head (filter ((== BSLazy.fromStrict str) . fst) ps)
         )
 
 plugin :: Plugin
-plugin = Plugin (map (BSU.fromString . (:"dic ")) ":!") parse
+plugin = Plugin (map BSU.fromString ["!dic", "!dict", ":dic", ":dict", "dic", "!사전", ":사전", "!d", ":d", "ㅅ"]) parse
